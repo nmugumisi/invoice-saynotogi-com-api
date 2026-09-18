@@ -8,30 +8,30 @@ can fetch and write the same data.
 
 ## Authentication
 
-All routes require a logged-in user who can `manage_options` (an
-administrator), authenticated via **WordPress Application Passwords**
-(built into WordPress core since 5.6 — no extra plugin needed):
+The plugin generates its own **API key** — no WordPress account, username,
+or Application Password needed:
 
-1. In wp-admin, go to **Users → your profile → Application Passwords**.
-2. Enter a name (e.g. "Invoices App") and click **Add New Application Password**.
-3. Copy the generated password (shown once).
-4. Send it as HTTP Basic Auth on every request: `Authorization: Basic base64(username:app_password)`.
+1. In wp-admin, go to **Settings → Invoice Settings**.
+2. Scroll to **Mobile App** and copy the **API Key** shown there (one is
+   generated automatically the first time you view this page).
+3. Send it on every request as a custom header: `X-CI-API-Key: <the key>`.
 
-Application Passwords require the site to be served over **HTTPS** (or
-`WP_ENVIRONMENT_TYPE` set to `local` for local development). ngatinyore.co.zw
-already runs on HTTPS, so no extra configuration is needed there.
+Click **Generate New Key** to rotate it — the old key stops working
+immediately, so any connected app will need the new key entered again. A
+logged-in administrator (cookie auth) is also accepted, which is handy for
+poking the API from a browser without a key.
 
 ### Browser-based clients (CORS)
 
 A native app's HTTP client isn't subject to CORS, so this only matters if
 you build a browser-based consumer of this API (the plugin already sends
-`Access-Control-Allow-Headers: Authorization` for that case). If you use the
-pretty `/wp-json/...` URL form from a browser, watch for a redirect on some
-installs when the path is missing a trailing slash — a cross-origin redirect
-drops CORS headers and the request will be blocked. The
-`?rest_route=/custom-invoices/v1/...` form (used in the examples below and
-by the Android app) never redirects and works identically regardless of the
-site's permalink setting.
+`Access-Control-Allow-Headers: X-CI-API-Key, Authorization, Content-Type`
+for that case). If you use the pretty `/wp-json/...` URL form from a
+browser, watch for a redirect on some installs when the path is missing a
+trailing slash — a cross-origin redirect drops CORS headers and the request
+will be blocked. The `?rest_route=/custom-invoices/v1/...` form (used in the
+examples below and by the Android app) never redirects and works
+identically regardless of the site's permalink setting.
 
 ## Endpoints
 
@@ -109,14 +109,14 @@ set in Settings — identical to the admin screen's behaviour.
 ## Example
 
 ```bash
-curl -u "admin:xxxx xxxx xxxx xxxx xxxx xxxx" \
-  https://ngatinyore.co.zw/wp-json/custom-invoices/v1/invoices
+curl -H "X-CI-API-Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  "https://ngatinyore.co.zw/index.php?rest_route=/custom-invoices/v1/invoices"
 ```
 
 ## Tested
 
 Verified end-to-end against a scratch WordPress 6.x + PHP 8.3 install:
-settings read/update, full client/payment-method/invoice CRUD, auth
-rejection for missing/invalid credentials, and cross-checked that an
+settings read/update, full client/payment-method/invoice CRUD, API-key and
+cookie auth, rejection of missing/invalid keys, and cross-checked that an
 invoice created via the API opens and edits cleanly in the wp-admin screen
 with no PHP notices/warnings.

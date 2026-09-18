@@ -8,9 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * payment methods, and settings that the WordPress admin screens manage, so
  * an external client can fetch and write the same data.
  *
- * Auth: WordPress Application Passwords (Users > Profile > Application
- * Passwords) sent as HTTP Basic Auth. All routes require a user who can
- * manage_options, same as the admin screens.
+ * Auth: the plugin's own API key (Settings > Invoice Settings > Mobile App),
+ * sent as an X-CI-API-Key header — no WordPress account needed. A logged-in
+ * administrator (cookie auth) is also accepted, for testing from a browser.
  */
 class CI_REST_API {
 
@@ -32,31 +32,45 @@ class CI_REST_API {
 
 	/**
 	 * WordPress core already sends Access-Control-Allow-Origin for REST
-	 * requests, but not Authorization in Access-Control-Allow-Headers —
-	 * without it, a browser-based client sending Application Passwords as
-	 * Basic Auth gets blocked at the CORS preflight before our own
-	 * permission check ever runs. A native app's HTTP client isn't
-	 * subject to CORS, so this only matters for browser-based consumers.
+	 * requests, but doesn't know about our custom X-CI-API-Key header —
+	 * without allowing it explicitly, a browser-based client gets blocked
+	 * at the CORS preflight before our own permission check ever runs. A
+	 * native app's HTTP client isn't subject to CORS, so this only matters
+	 * for browser-based consumers.
 	 */
 	public function allow_authorization_header_for_cors() {
 		add_filter(
 			'rest_pre_serve_request',
 			function ( $value ) {
-				header( 'Access-Control-Allow-Headers: Authorization, Content-Type' );
+				header( 'Access-Control-Allow-Headers: Authorization, Content-Type, X-CI-API-Key' );
 				return $value;
 			}
 		);
 	}
 
-	public function check_permission() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return new WP_Error(
-				'ci_rest_forbidden',
-				__( 'You are not allowed to access the invoicing API.', 'custom-invoices' ),
-				array( 'status' => rest_authorization_required_code() )
-			);
+	/**
+	 * Allows either a logged-in administrator (cookie auth — e.g. testing
+	 * from a browser) or the plugin's own API key, sent by the app as
+	 * X-CI-API-Key, so connecting the app never requires a WordPress
+	 * account or Application Password.
+	 */
+	public function check_permission( $request ) {
+		if ( current_user_can( 'manage_options' ) ) {
+			return true;
 		}
-		return true;
+
+		$provided = $request instanceof WP_REST_Request ? $request->get_header( 'x-ci-api-key' ) : '';
+		$expected = CI_Settings::get_api_key();
+
+		if ( $provided && $expected && hash_equals( $expected, $provided ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'ci_rest_forbidden',
+			__( 'You are not allowed to access the invoicing API.', 'custom-invoices' ),
+			array( 'status' => rest_authorization_required_code() )
+		);
 	}
 
 	/**
