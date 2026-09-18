@@ -41,6 +41,7 @@ Base URL: `https://ngatinyore.co.zw/wp-json/custom-invoices/v1`
 |---|---|---|
 | GET | `/settings` | Business details, invoice numbering defaults, currency, exchange rates |
 | POST | `/settings` | Update settings (merges — only sent fields are changed) |
+| POST | `/settings/fetch-rates` | Fetch live USD→ZAR/BWP rates, save them, and return the refreshed settings plus `rate_source` |
 | GET | `/clients` | List all clients |
 | POST | `/clients` | Create a client (`name` required) |
 | GET | `/clients/{id}` | Get one client |

@@ -102,6 +102,18 @@ class CI_REST_API {
 
 		register_rest_route(
 			self::NAMESPACE_V1,
+			'/settings/fetch-rates',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'fetch_rates' ),
+					'permission_callback' => array( $this, 'check_permission' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE_V1,
 			'/clients',
 			array(
 				array(
@@ -289,6 +301,24 @@ class CI_REST_API {
 		update_option( CI_Settings::OPTION_KEY, $settings );
 
 		return $this->get_settings( $request );
+	}
+
+	/**
+	 * Fetches live USD→ZAR/BWP rates from the same fallback feeds the admin
+	 * screen uses, saves them, and returns the refreshed settings — so the
+	 * app never needs to talk to a third-party exchange-rate service itself.
+	 */
+	public function fetch_rates( $request ) {
+		$result = CI_Settings::instance()->fetch_and_save_rates();
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 502 ) );
+		}
+
+		$response               = $this->get_settings( $request )->get_data();
+		$response['rate_source'] = $result['source'];
+
+		return rest_ensure_response( $response );
 	}
 
 	// ---------------------------------------------------------------------

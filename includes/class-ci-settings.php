@@ -173,10 +173,26 @@ class CI_Settings {
 			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'custom-invoices' ) ) );
 		}
 
-		$result = $this->fetch_live_rates();
+		$result = $this->fetch_and_save_rates();
 
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Fetches live rates and persists them immediately — shared by the admin
+	 * AJAX handler and the REST API, so both behave identically.
+	 *
+	 * @return array{zar: float|null, bwp: float|null, source: string}|WP_Error
+	 */
+	public function fetch_and_save_rates() {
+		$result = $this->fetch_live_rates();
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
 		$rates = $result['rates'];
@@ -184,10 +200,12 @@ class CI_Settings {
 		$bwp   = isset( $rates['BWP'] ) ? (float) $rates['BWP'] : false;
 
 		if ( false === $zar && false === $bwp ) {
-			wp_send_json_error(
-				array(
+			return new WP_Error(
+				'ci_rates_incomplete',
+				sprintf(
 					/* translators: %s: name of the exchange-rate feed */
-					'message' => sprintf( __( '%s answered, but did not include ZAR or BWP. Enter the rates manually.', 'custom-invoices' ), $result['source'] ),
+					__( '%s answered, but did not include ZAR or BWP. Enter the rates manually.', 'custom-invoices' ),
+					$result['source']
 				)
 			);
 		}
@@ -203,12 +221,10 @@ class CI_Settings {
 		}
 		update_option( self::OPTION_KEY, $settings );
 
-		wp_send_json_success(
-			array(
-				'zar'    => false !== $zar ? $zar : null,
-				'bwp'    => false !== $bwp ? $bwp : null,
-				'source' => $result['source'],
-			)
+		return array(
+			'zar'    => false !== $zar ? $zar : null,
+			'bwp'    => false !== $bwp ? $bwp : null,
+			'source' => $result['source'],
 		);
 	}
 
