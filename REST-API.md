@@ -21,6 +21,18 @@ Application Passwords require the site to be served over **HTTPS** (or
 `WP_ENVIRONMENT_TYPE` set to `local` for local development). ngatinyore.co.zw
 already runs on HTTPS, so no extra configuration is needed there.
 
+### Browser-based clients (CORS)
+
+A native app's HTTP client isn't subject to CORS, so this only matters if
+you build a browser-based consumer of this API (the plugin already sends
+`Access-Control-Allow-Headers: Authorization` for that case). If you use the
+pretty `/wp-json/...` URL form from a browser, watch for a redirect on some
+installs when the path is missing a trailing slash — a cross-origin redirect
+drops CORS headers and the request will be blocked. The
+`?rest_route=/custom-invoices/v1/...` form (used in the examples below and
+by the Android app) never redirects and works identically regardless of the
+site's permalink setting.
+
 ## Endpoints
 
 Base URL: `https://ngatinyore.co.zw/wp-json/custom-invoices/v1`

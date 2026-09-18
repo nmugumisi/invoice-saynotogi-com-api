@@ -27,6 +27,25 @@ class CI_REST_API {
 
 	private function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this, 'allow_authorization_header_for_cors' ) );
+	}
+
+	/**
+	 * WordPress core already sends Access-Control-Allow-Origin for REST
+	 * requests, but not Authorization in Access-Control-Allow-Headers —
+	 * without it, a browser-based client sending Application Passwords as
+	 * Basic Auth gets blocked at the CORS preflight before our own
+	 * permission check ever runs. A native app's HTTP client isn't
+	 * subject to CORS, so this only matters for browser-based consumers.
+	 */
+	public function allow_authorization_header_for_cors() {
+		add_filter(
+			'rest_pre_serve_request',
+			function ( $value ) {
+				header( 'Access-Control-Allow-Headers: Authorization, Content-Type' );
+				return $value;
+			}
+		);
 	}
 
 	public function check_permission() {
