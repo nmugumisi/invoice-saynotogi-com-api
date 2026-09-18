@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Custom Invoices
  * Description: Simple invoice creation plugin — settings page for your company/payment details, an invoice form (custom post type), and a printable invoice layout.
- * Version: 1.1.6
+ * Version: 1.2.0
  * Author: Nyasha
  * Text Domain: custom-invoices
  */
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'CI_PLUGIN_FILE', __FILE__ );
 define( 'CI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'CI_VERSION', '1.1.6' );
+define( 'CI_VERSION', '1.2.0' );
 
 require_once CI_PLUGIN_DIR . 'includes/class-ci-settings.php';
 require_once CI_PLUGIN_DIR . 'includes/class-ci-invoice-cpt.php';
@@ -23,6 +23,7 @@ require_once CI_PLUGIN_DIR . 'includes/class-ci-payment-method-cpt.php';
 require_once CI_PLUGIN_DIR . 'includes/class-ci-invoice-metabox.php';
 require_once CI_PLUGIN_DIR . 'includes/class-ci-invoice-template.php';
 require_once CI_PLUGIN_DIR . 'includes/class-ci-admin-columns.php';
+require_once CI_PLUGIN_DIR . 'includes/class-ci-rest-api.php';
 
 /**
  * Main plugin bootstrap.
@@ -46,6 +47,7 @@ final class Custom_Invoices {
 		CI_Invoice_Metabox::instance();
 		CI_Invoice_Template::instance();
 		CI_Admin_Columns::instance();
+		CI_REST_API::instance();
 
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_assets' ) );
 	}

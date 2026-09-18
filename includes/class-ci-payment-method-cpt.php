@@ -174,6 +174,7 @@ class CI_Payment_Method_CPT {
 			$methods[ $post->ID ] = array(
 				'title'   => $post->post_title,
 				'content' => get_post_meta( $post->ID, '_ci_payment_content', true ),
+				'order'   => (int) $post->menu_order,
 			);
 		}
 		return $methods;

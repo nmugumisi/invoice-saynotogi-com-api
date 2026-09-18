@@ -35,7 +35,7 @@ class CI_Invoice_Metabox {
 	 * Next invoice number: one more than the highest number among already-saved
 	 * invoices, or the configured starting number if none exist yet.
 	 */
-	private function next_invoice_number() {
+	public static function next_invoice_number() {
 		$prefix = CI_Settings::get( 'invoice_prefix', '' );
 		$start  = (int) CI_Settings::get( 'start_number', 285 );
 
@@ -75,7 +75,7 @@ class CI_Invoice_Metabox {
 		$paid_amt = get_post_meta( $post->ID, '_ci_amount_paid', true );
 
 		if ( 'auto-draft' === $post->post_status && ! $number ) {
-			$number = $this->next_invoice_number();
+			$number = self::next_invoice_number();
 		}
 		if ( ! $date ) {
 			$date = current_time( 'Y-m-d' );
