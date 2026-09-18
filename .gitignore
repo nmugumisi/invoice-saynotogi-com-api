@@ -1,1 +1,5 @@
 *.zip
+
+# Shipped in the packaged zip, never in this public repo — it grants full
+# read/write access to invoices, clients, and payment details.
+includes/ci-api-key.php

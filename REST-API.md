@@ -8,18 +8,29 @@ can fetch and write the same data.
 
 ## Authentication
 
-The plugin generates its own **API key** — no WordPress account, username,
-or Application Password needed:
+Requests carry a shared **API key** in an `X-CI-API-Key` header — no
+WordPress account, username, or Application Password involved.
 
-1. In wp-admin, go to **Settings → Invoice Settings**.
-2. Scroll to **Mobile App** and copy the **API Key** shown there (one is
-   generated automatically the first time you view this page).
-3. Send it on every request as a custom header: `X-CI-API-Key: <the key>`.
+The key ships *inside* the plugin, at `includes/ci-api-key.php`, and the
+same value is compiled into the app. So there is nothing to copy between
+the two and no setup step: uploading the plugin is all it takes for the app
+to start working. That file is deliberately kept out of this (public) repo
+and only exists in the packaged zip.
 
-Click **Generate New Key** to rotate it — the old key stops working
-immediately, so any connected app will need the new key entered again. A
-logged-in administrator (cookie auth) is also accepted, which is handy for
-poking the API from a browser without a key.
+A logged-in administrator (cookie auth) is also accepted, which is handy
+for poking the API from a browser without a key.
+
+### Rotating the key
+
+Both sides have to change together, so rotation means a new plugin zip
+*and* a new app build. Either:
+
+- edit `includes/ci-api-key.php`, re-package, and rebuild the app with the
+  matching value; or
+- define `CI_INVOICES_API_KEY` in `wp-config.php` (it takes precedence over
+  the bundled file) and rebuild the app to match.
+
+Changing only one side locks the app out.
 
 ### Browser-based clients (CORS)
 
@@ -121,3 +132,8 @@ settings read/update, full client/payment-method/invoice CRUD, API-key and
 cookie auth, rejection of missing/invalid keys, and cross-checked that an
 invoice created via the API opens and edits cleanly in the wp-admin screen
 with no PHP notices/warnings.
+
+For the bundled key specifically: the app authenticates on a freshly
+deployed plugin without anyone opening wp-admin first, a stale key is
+rejected, and fetching `includes/ci-api-key.php` directly over HTTP returns
+nothing (the `ABSPATH` guard).

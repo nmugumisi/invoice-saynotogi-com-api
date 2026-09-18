@@ -23,7 +23,6 @@ class CI_Settings {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'save_business_details' ) );
-		add_action( 'admin_init', array( $this, 'maybe_regenerate_api_key' ) );
 		add_action( 'wp_ajax_ci_fetch_rates', array( $this, 'ajax_fetch_rates' ) );
 	}
 
@@ -52,54 +51,30 @@ class CI_Settings {
 	}
 
 	/**
-	 * The key the mobile app authenticates with instead of a WordPress
-	 * account — generated the first time it's needed so there's always a
-	 * usable key once the plugin is active.
+	 * The key the app authenticates with instead of a WordPress account.
+	 * The same value is compiled into the app, so there is nothing to copy
+	 * between the two — uploading the plugin is the whole setup.
+	 *
+	 * Resolved in order:
+	 *   1. A CI_INVOICES_API_KEY constant in wp-config.php, if defined.
+	 *      (An escape hatch for rotating the key without re-packaging —
+	 *      the app has to be rebuilt to match either way.)
+	 *   2. The key bundled with the plugin, in includes/ci-api-key.php.
 	 */
 	public static function get_api_key() {
-		$key = self::get( 'api_key', '' );
-		if ( $key ) {
-			return $key;
+		if ( defined( 'CI_INVOICES_API_KEY' ) && CI_INVOICES_API_KEY ) {
+			return (string) CI_INVOICES_API_KEY;
 		}
 
-		$key      = self::generate_api_key();
-		$settings = get_option( self::OPTION_KEY, array() );
-		$settings['api_key'] = $key;
-		update_option( self::OPTION_KEY, $settings );
-
-		return $key;
-	}
-
-	private static function generate_api_key() {
-		return bin2hex( random_bytes( 32 ) );
-	}
-
-	/**
-	 * Handles the "Generate New Key" button on the Invoice Settings page.
-	 * A fresh key immediately invalidates the old one — any app still using
-	 * it will need to be reconnected.
-	 */
-	public function maybe_regenerate_api_key() {
-		if ( ! isset( $_POST['ci_regenerate_api_key'] ) ) {
-			return;
-		}
-		if ( ! isset( $_POST['ci_api_key_nonce'] ) || ! wp_verify_nonce( $_POST['ci_api_key_nonce'], 'ci_regenerate_api_key' ) ) {
-			return;
-		}
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		$settings             = get_option( self::OPTION_KEY, array() );
-		$settings['api_key']  = self::generate_api_key();
-		update_option( self::OPTION_KEY, $settings );
-
-		add_action(
-			'admin_notices',
-			function () {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'New API key generated. Update the app with the new key — the old one no longer works.', 'custom-invoices' ) . '</p></div>';
+		$bundled = CI_PLUGIN_DIR . 'includes/ci-api-key.php';
+		if ( is_readable( $bundled ) ) {
+			$key = include $bundled;
+			if ( is_string( $key ) && '' !== $key ) {
+				return $key;
 			}
-		);
+		}
+
+		return '';
 	}
 
 	public function register_settings() {
@@ -126,7 +101,6 @@ class CI_Settings {
 			'company_name',
 			'company_phone',
 			'company_email',
-			'api_key',
 		);
 		foreach ( $text_fields as $field ) {
 			if ( isset( $input[ $field ] ) ) {
@@ -549,36 +523,15 @@ class CI_Settings {
 			</form>
 
 			<h2 class="title"><?php esc_html_e( 'Mobile App', 'custom-invoices' ); ?></h2>
-			<p class="description">
-				<?php esc_html_e( 'Connect the Invoices app to this site with this key instead of a WordPress account. Keep it secret — anyone with it can read and change your invoices, clients, and payment methods.', 'custom-invoices' ); ?>
-			</p>
-			<table class="form-table" role="presentation">
-				<tr>
-					<th scope="row"><?php esc_html_e( 'API Key', 'custom-invoices' ); ?></th>
-					<td>
-						<input
-							type="text"
-							readonly="readonly"
-							class="regular-text code"
-							style="width:26em;"
-							value="<?php echo esc_attr( self::get_api_key() ); ?>"
-							onclick="this.select();"
-						/>
-					</td>
-				</tr>
-			</table>
-			<form method="post">
-				<?php wp_nonce_field( 'ci_regenerate_api_key', 'ci_api_key_nonce' ); ?>
-				<button
-					type="submit"
-					name="ci_regenerate_api_key"
-					value="1"
-					class="button"
-					onclick="return confirm('<?php echo esc_js( __( 'Generate a new key? The app will stop working with the old one until you reconnect it with the new key.', 'custom-invoices' ) ); ?>');"
-				>
-					<?php esc_html_e( 'Generate New Key', 'custom-invoices' ); ?>
-				</button>
-			</form>
+			<?php if ( self::get_api_key() ) : ?>
+				<p class="description">
+					<?php esc_html_e( 'The Invoices app is already set up to talk to this site — nothing to copy or configure. Its key ships inside this plugin, so it keeps working as long as the plugin stays installed.', 'custom-invoices' ); ?>
+				</p>
+			<?php else : ?>
+				<p class="description" style="color:#b32d2e;">
+					<?php esc_html_e( 'No API key found. This plugin was installed without its key file (includes/ci-api-key.php), so the app cannot connect. Re-upload the packaged plugin zip.', 'custom-invoices' ); ?>
+				</p>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
